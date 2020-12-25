@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class Calculator implements CommandLineRunner {
@@ -80,11 +81,8 @@ public class Calculator implements CommandLineRunner {
 
         //initialize buildingQueue
         List<QueueElement> queueElementList = new ArrayList<>();
-        queueElementList.add(new QueueElement(BuildingType.CONVERT_MIL_TO_CIV, 1, 64, gameState));
-        queueElementList.add(new QueueElement(BuildingType.CONVERT_MIL_TO_CIV,1, 64, gameState));
-        queueElementList.add(new QueueElement(BuildingType.CONVERT_MIL_TO_CIV,1, 59, gameState));
-        queueElementList.add(new QueueElement(BuildingType.CONVERT_MIL_TO_CIV, 1, 57, gameState));
-        /**
+
+
          queueElementList.add(new QueueElement(BuildingType.INFRASTRUCTURE,2, 51, gameState));
          queueElementList.add(new QueueElement(BuildingType.INFRASTRUCTURE, 3, 42, gameState));
          queueElementList.add(new QueueElement(BuildingType.CIVILIAN_FACTORY,5, 51, gameState));
@@ -123,7 +121,6 @@ public class Calculator implements CommandLineRunner {
          queueElementList.add(new QueueElement(BuildingType.MILITARY_FACTORY, 5, 50, gameState));
          queueElementList.add(new QueueElement(BuildingType.INFRASTRUCTURE,3, 52, gameState));
          queueElementList.add(new QueueElement(BuildingType.MILITARY_FACTORY, 5, 52, gameState));
-         */
 
         //finish gamestate calculations
         gameState.updateGameState();
@@ -140,42 +137,24 @@ public class Calculator implements CommandLineRunner {
             int filledBuildingProgressSlots = gameState.getCivilianFactoriesLeftForConstruction() / 15;
             int factoriesForUnfilledProgress = gameState.getCivilianFactoriesLeftForConstruction() % 15;
 
-            if(days == 120){
-                System.out.println("Debug lol");
+            while(queueElementList.size()<filledBuildingProgressSlots+1){
+                //run add building task
             }
-
-            try {
-
-                // apply full and partially filled construction slots
-                for (int slots = 0; slots < filledBuildingProgressSlots; slots++) {
-
-                    queueElementList.get(slots + progressOffset).addProgress(15);
-                }
-                queueElementList.get(filledBuildingProgressSlots + progressOffset).addProgress(factoriesForUnfilledProgress);
-
-                //check if buildings were finished
-                int addToOffset = 0;
-                for (int slots = 0; slots < filledBuildingProgressSlots + 1; slots++) {
-                    if (queueElementList.get(slots + progressOffset).checkGoalReached()) {
-                        addToOffset++;
-                    }
-                }
-                // if there were any buildings completed it should trigger a gameState refresh
-                progressOffset += addToOffset;
-                accumulatedMilFactoryDays += gameState.getMilitaryFactory().getAmount();
-                gameState.updateGameState();
-
-            } catch (IndexOutOfBoundsException exception) {
-                if (!queueEmptyFlag) {
-                    System.out.println("Civilian factories first unused on day: " + days + "");
-                    queueEmptyFlag = true;
-                }
+            // add progress
+            for (int slots = 0; slots < filledBuildingProgressSlots; slots++) {
+                queueElementList.get(slots).addProgress(15);
             }
+            queueElementList.get(filledBuildingProgressSlots + progressOffset).addProgress(factoriesForUnfilledProgress);
+
+            // purge empty entries from the list
+            queueElementList = queueElementList.stream().filter(queueElement -> !queueElement.checkGoalReached()).collect(Collectors.toList());
 
 
+            // make something like
+            //System.out.println("Civilian factories first unused on day: " + days + "");
 
             //time based changes
-            /**
+
              switch(days){
              case 70:
              printTimeLog("Schacht Ideas",days);
@@ -224,17 +203,17 @@ public class Calculator implements CommandLineRunner {
              break;
              case 490:
              printTimeLog("Anschluss",days);
-             gameState.getIntegerStateMap().put(153, new State("Tyrol", 153, 8, 4, 1, 0, 5, 0, 0, 0, 0));
-             gameState.getIntegerStateMap().put(152, new State("Upper Austria", 152, 6, 6, 1, 0, 4, 0, 0, 0, 0));
-             gameState.getIntegerStateMap().put(4, new State("Lower Austria", 4, 7, 8, 3, 0, 5, 0, 0, 0, 0));
+             gameState.getIntegerStateMap().put(153, new State("Tyrol", 153, 8, 4, 1, 0, 5, 0));
+             gameState.getIntegerStateMap().put(152, new State("Upper Austria", 152, 6, 6, 1, 0, 4, 0));
+             gameState.getIntegerStateMap().put(4, new State("Lower Austria", 4, 7, 8, 3, 0, 5, 0));
              gameState.updateGameState();
              break;
              case 560:
              printTimeLog("Sudetenland",days);
              gameState.stability = 0.94f;
 
-             gameState.getIntegerStateMap().put(69, new State("Sudetenland", 69, 8, 4, 1, 0, 2, 0, 0, 0, 0));
-             gameState.getIntegerStateMap().put(152, new State("Eastern Sudetenland", 74, 6, 2, 1, 0, 0, 0, 0, 0, 0));
+             gameState.getIntegerStateMap().put(69, new State("Sudetenland", 69, 8, 4, 1, 0, 2, 0));
+             gameState.getIntegerStateMap().put(152, new State("Eastern Sudetenland", 74, 6, 2, 1, 0, 0, 0));
 
              printTimeLog("remove Schacht Ideas",days);
              gameState.getCivilianFactory().addConstructionSpeedModifier(-0.1f);
@@ -251,22 +230,22 @@ public class Calculator implements CommandLineRunner {
              break;
              case 770:
              printTimeLog("partition czechoslovakia with hungary",days);
-             gameState.getIntegerStateMap().put(9, new State("Bohemia", 9, 7, 8, 6, 0, 1, 0, 0, 0, 0));
-             gameState.getIntegerStateMap().put(75, new State("Moravia", 75, 7, 6, 1, 0, 4, 0, 0, 0, 0));
+             gameState.getIntegerStateMap().put(9, new State("Bohemia", 9, 7, 8, 6, 0, 1, 0));
+             gameState.getIntegerStateMap().put(75, new State("Moravia", 75, 7, 6, 1, 0, 4, 0));
              gameState.updateGameState();
              break;
              case 840:
              printTimeLog("Memelland",days);
-             gameState.getIntegerStateMap().put(188, new State("Memel", 188, 7, 2, 1, 0, 1, 0, 0, 0, 0));
+             gameState.getIntegerStateMap().put(188, new State("Memel", 188, 7, 2, 1, 0, 1, 0));
              gameState.updateGameState();
              break;
              case 910:
              printTimeLog("Slovenia",days);
-             gameState.getIntegerStateMap().put(102, new State("Slovenia", 102, 6, 5, 0, 0, 1, 0, 0, 0, 0));
+             gameState.getIntegerStateMap().put(102, new State("Slovenia", 102, 6, 5, 0, 0, 1, 0));
              gameState.updateGameState();
              break;
              }
-             */
+
 
         }
 
