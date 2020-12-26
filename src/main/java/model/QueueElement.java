@@ -43,7 +43,7 @@ public class QueueElement {
                     this.progress = 0;
                     break;
                 case INFRASTRUCTURE:
-                    gameState.integerStateMap.get(stateId).addInfrastrucureLevel();
+                    gameState.integerStateMap.get(stateId).addInfrastructureLevel();
                     this.level = level-1;
                     this.progress = 0;
                     break;
@@ -78,12 +78,15 @@ public class QueueElement {
         switch(buildingType) {
             case CIVILIAN_FACTORY:
                 this.goalPoints = gameState.civilianFactory.getConstructionCost();
+                gameState.integerStateMap.get(stateId).addPendingSlot();
                 break;
             case MILITARY_FACTORY:
                 this.goalPoints = gameState.militaryFactory.getConstructionCost();
+                gameState.integerStateMap.get(stateId).addPendingSlot();
                 break;
             case INFRASTRUCTURE:
                 this.goalPoints = gameState.infrastructure.getConstructionCost();
+                gameState.integerStateMap.get(stateId).addPendingInfrastructureLevel();
                 break;
             case CONVERT_MIL_TO_CIV:
                 this.goalPoints = gameState.civilianFactory.getConversionCost()*(1.0f+gameState.economyLaw.getCivilianFactoryConversionCost()+gameState.civilianFactory.getConversionCostModifier());

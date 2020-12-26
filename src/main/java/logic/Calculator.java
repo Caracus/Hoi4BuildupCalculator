@@ -65,6 +65,7 @@ public class Calculator implements CommandLineRunner {
         gameState.generalConstructionBonus = 0.0f;
         gameState.stability = 0.00f;
         gameState.consumerGoodsModifiers = 0.0f;
+        gameState.expectedBuildingSlotWorth = 4000.0f;
 
         //country stats
         printTimeLog("Set start conditions", -1);
@@ -125,33 +126,38 @@ public class Calculator implements CommandLineRunner {
         //finish gamestate calculations
         gameState.updateGameState();
 
+        NextBuildQueueCheckDTO nextBuildQueueCheckDTO = gameState.findStateForNextQueueAndCheckIfInfraIsBetter(gameState);
+
         //stuff for the timeline calcs
         int accumulatedMilFactoryDays = 0;
         boolean queueEmptyFlag = false;
 
         //start timeline
-        int timeCapInDays = 1000;
-        int progressOffset = 0;
+        int timeCapInDays = 10000;
         for (int days = 0; days < timeCapInDays; days++) {
             // calculate how civ factories are distributed
             int filledBuildingProgressSlots = gameState.getCivilianFactoriesLeftForConstruction() / 15;
             int factoriesForUnfilledProgress = gameState.getCivilianFactoriesLeftForConstruction() % 15;
 
             while(queueElementList.size()<filledBuildingProgressSlots+1){
+                break;
                 //run add building task
             }
+            if(queueElementList.size()<filledBuildingProgressSlots+1){
+                System.out.println("Civilian factories first unused on day: " + days + "");
+                System.out.println("Input building queue is finished");
+                break;
+            }
+
             // add progress
             for (int slots = 0; slots < filledBuildingProgressSlots; slots++) {
                 queueElementList.get(slots).addProgress(15);
             }
-            queueElementList.get(filledBuildingProgressSlots + progressOffset).addProgress(factoriesForUnfilledProgress);
+            queueElementList.get(filledBuildingProgressSlots).addProgress(factoriesForUnfilledProgress);
 
             // purge empty entries from the list
             queueElementList = queueElementList.stream().filter(queueElement -> !queueElement.checkGoalReached()).collect(Collectors.toList());
 
-
-            // make something like
-            //System.out.println("Civilian factories first unused on day: " + days + "");
 
             //time based changes
 
@@ -245,7 +251,6 @@ public class Calculator implements CommandLineRunner {
              gameState.updateGameState();
              break;
              }
-
 
         }
 

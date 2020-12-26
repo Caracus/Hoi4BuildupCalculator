@@ -4,6 +4,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Data
@@ -24,6 +26,7 @@ public class GameState {
     public int totalFactoryCount;
     public TradeLaw tradeLaw;
     public EconomyLaw economyLaw;
+    public float expectedBuildingSlotWorth;
 
     public void updateGameState() {
         integerStateMap.values().forEach(state -> state.refreshData());
@@ -39,7 +42,7 @@ public class GameState {
     }
 
     public static Integer calculateNumberOfCivilianFactories(Map<Integer, State> integerStateMap) {
-       return integerStateMap.values().stream().map(state -> state.getCivAmount()).collect(Collectors.summingInt(Integer::intValue));
+        return integerStateMap.values().stream().map(state -> state.getCivAmount()).collect(Collectors.summingInt(Integer::intValue));
     }
 
     public static Integer calculateNumberOfMilitaryFactories(Map<Integer, State> integerStateMap) {
@@ -71,15 +74,53 @@ public class GameState {
     }
 
     public void calculateCivilianFactoriesLeftForConstruction() {
-        this.civilianFactoriesLeftForConstruction = (int) Math.ceil(civilianFactory.getAmount()+civilianFactory.getOffMapAmount()-(civilianFactory.getAmount()+civilianFactory.getOffMapAmount()+militaryFactory.getAmount())*(consumerGoodsFinal));
+        this.civilianFactoriesLeftForConstruction = (int) Math.ceil(civilianFactory.getAmount() + civilianFactory.getOffMapAmount() - (civilianFactory.getAmount() + civilianFactory.getOffMapAmount() + militaryFactory.getAmount()) * (consumerGoodsFinal));
     }
 
     public float getGeneralConstructionBonusFinal() {
-        return tradeLaw.getConstructionSpeedBonus()+generalConstructionBonus;
+        return tradeLaw.getConstructionSpeedBonus() + generalConstructionBonus;
     }
 
     public void addGeneralConstructionBonus(float value) {
         this.generalConstructionBonus += value;
+    }
+
+    public NextBuildQueueCheckDTO findStateForNextQueueAndCheckIfInfraIsBetter(GameState gameState) {
+        //first check if there is a state with open slots
+        Optional<State> stateOptional = integerStateMap.values().stream().filter(stateEntry -> stateEntry.getOpenInfrastructureLevel() == 0).findFirst();
+        if (stateOptional.isPresent()) {
+            return new NextBuildQueueCheckDTO(true, false, stateOptional.get().getId());
+        }
+
+        AtomicInteger stateWithHighestInvestValueId = new AtomicInteger();
+        AtomicInteger highestValue = new AtomicInteger();
+        highestValue.set(-1);
+        integerStateMap.values().stream().forEach(state -> {
+            if(calculateConstructionSavingsByBuildingInfrastructure(state)> highestValue.get()){
+                stateWithHighestInvestValueId.set(state.getId());
+                highestValue.set(calculateConstructionSavingsByBuildingInfrastructure(state));
+            }
+            System.out.println(calculateConstructionSavingsByBuildingInfrastructure(state)+ " in "+state.getName());
+        });
+        if(highestValue.get() > 0){
+            return new NextBuildQueueCheckDTO(false, true, stateWithHighestInvestValueId.get());
+        }
+
+        for(int i = 10; i >0; i--){
+            int finalI = i;
+            Optional<State> optionalState = integerStateMap.values().stream().filter(state -> state.getInfrastructureLevel() == finalI).findFirst();
+            if(optionalState.isPresent()){
+                return new NextBuildQueueCheckDTO(false, false, optionalState.get().getId());
+            }
+        }
+        return null;
+    }
+
+    public int calculateConstructionSavingsByBuildingInfrastructure(State state){
+        // maybe include other modifiers down the line, this is kinda shit given how normal modifiers do not scale linearly with infra bonus
+        float pureInfraModifier = 1.0f+(state.getInfrastructureLevel()+state.getPendingInfrastructue())*0.1f;
+        return Math.round(state.getEmptySlots()*expectedBuildingSlotWorth*(pureInfraModifier+0.1f-pureInfraModifier)-infrastructure.getConstructionCost());
+
     }
 
 }
