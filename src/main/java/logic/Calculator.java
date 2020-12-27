@@ -1,13 +1,11 @@
 package logic;
 
+import Fixtures.Countries.Countries;
 import model.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -24,29 +22,11 @@ public class Calculator implements CommandLineRunner {
 
         List<State> stateList = new ArrayList<>();
 
-        //initialize states
-        stateList.add(new State("Brandenburg", 64, 8, 12, 5, 0, 4, 0));
-        stateList.add(new State("Ermland-Masuren", 5, 6, 4, 0, 0, 0, 0));
-        stateList.add(new State("Franken", 54, 7, 6, 0, 0, 2, 0));
-        stateList.add(new State("Hannover", 59, 7, 8, 2, 2, 1, 0));
-        stateList.add(new State("Hessen", 55, 7, 8, 1, 0, 2, 0));
-        stateList.add(new State("Hinterpommern", 63, 6, 4, 0, 0, 1, 0));
-        stateList.add(new State("Königsberg", 763, 6, 6, 0, 0, 2, 0));
-        stateList.add(new State("Mecklenburg", 61, 6, 4, 3, 0, 0, 0));
-        stateList.add(new State("Moselland", 42, 7, 10, 0, 0, 3, 0));
-        stateList.add(new State("Niederbayern", 53, 6, 6, 0, 0, 0, 0));
-        stateList.add(new State("Niederschlesien", 66, 6, 8, 0, 0, 1, 0));
-        stateList.add(new State("Oberbayern", 52, 7, 6, 2, 0, 1, 0));
-        stateList.add(new State("Oberschlesien", 67, 6, 6, 0, 0, 0, 0));
-        stateList.add(new State("Ostmark", 68, 6, 6, 0, 0, 1, 0));
-        stateList.add(new State("Rhineland", 51, 8, 10, 3, 0, 2, 0));
-        stateList.add(new State("Sachsen", 65, 7, 10, 2, 0, 7, 0));
-        stateList.add(new State("Schleswig-Holstein", 58, 6, 8, 2, 6, 0, 0));
-        stateList.add(new State("Thüringen", 60, 6, 8, 0, 0, 1, 0));
-        stateList.add(new State("Vorpommern", 62, 6, 4, 0, 0, 0, 0));
-        stateList.add(new State("Weser-Ems", 56, 6, 6, 0, 2, 2, 0));
-        stateList.add(new State("Westfalen", 57, 8, 8, 3, 0, 1, 0));
-        stateList.add(new State("Württemberg", 50, 8, 8, 5, 0, 1, 0));
+        stateList = new Countries().getStateListGermany1936();
+
+        List<WishListItem> buildingBacklogList = new ArrayList<>();
+        buildingBacklogList.add(new WishListItem(BuildingType.CIVILIAN_FACTORY,30));
+        buildingBacklogList.add(new WishListItem(BuildingType.MILITARY_FACTORY,100));
 
         Map<Integer, State> integerStateMap = new HashMap<>();
 
@@ -65,7 +45,7 @@ public class Calculator implements CommandLineRunner {
         gameState.generalConstructionBonus = 0.0f;
         gameState.stability = 0.00f;
         gameState.consumerGoodsModifiers = 0.0f;
-        gameState.expectedBuildingSlotWorth = 4000.0f;
+        gameState.expectedBuildingSlotWorth = 0.0f;
 
         //country stats
         printTimeLog("Set start conditions", -1);
@@ -83,7 +63,7 @@ public class Calculator implements CommandLineRunner {
         //initialize buildingQueue
         List<QueueElement> queueElementList = new ArrayList<>();
 
-
+        /**
          queueElementList.add(new QueueElement(BuildingType.INFRASTRUCTURE,2, 51, gameState));
          queueElementList.add(new QueueElement(BuildingType.INFRASTRUCTURE, 3, 42, gameState));
          queueElementList.add(new QueueElement(BuildingType.CIVILIAN_FACTORY,5, 51, gameState));
@@ -122,26 +102,49 @@ public class Calculator implements CommandLineRunner {
          queueElementList.add(new QueueElement(BuildingType.MILITARY_FACTORY, 5, 50, gameState));
          queueElementList.add(new QueueElement(BuildingType.INFRASTRUCTURE,3, 52, gameState));
          queueElementList.add(new QueueElement(BuildingType.MILITARY_FACTORY, 5, 52, gameState));
+        */
+
 
         //finish gamestate calculations
         gameState.updateGameState();
-
-        NextBuildQueueCheckDTO nextBuildQueueCheckDTO = gameState.findStateForNextQueueAndCheckIfInfraIsBetter(gameState);
 
         //stuff for the timeline calcs
         int accumulatedMilFactoryDays = 0;
         boolean queueEmptyFlag = false;
 
         //start timeline
-        int timeCapInDays = 10000;
+        int timeCapInDays = 500;
         for (int days = 0; days < timeCapInDays; days++) {
             // calculate how civ factories are distributed
             int filledBuildingProgressSlots = gameState.getCivilianFactoriesLeftForConstruction() / 15;
             int factoriesForUnfilledProgress = gameState.getCivilianFactoriesLeftForConstruction() % 15;
 
             while(queueElementList.size()<filledBuildingProgressSlots+1){
-                break;
-                //run add building task
+                NextBuildQueueCheckDTO nextBuildQueueCheckDTO = gameState.findStateForNextQueueAndCheckIfInfraIsBetter(gameState);
+                if(nextBuildQueueCheckDTO == null) {
+                    System.out.println("Calculation crashed because no new factory slots were available");
+                }
+                WishListItem tempWishListItem = buildingBacklogList.get(0);
+                if(nextBuildQueueCheckDTO.isMaxedInfraFound()){
+                    decreaseBacklogItemLevel(buildingBacklogList);
+                    if(!checkForPotentialDuplicate(tempWishListItem.getBuildingType(), 1, nextBuildQueueCheckDTO.getStateId(),gameState, queueElementList)){
+                        queueElementList.add(new QueueElement(tempWishListItem.getBuildingType(), 1, nextBuildQueueCheckDTO.getStateId(),gameState));
+                    }
+                    gameState.updateGameState();
+                    break;
+                }
+                if(nextBuildQueueCheckDTO.isInfrastructureBetter()){
+                    if(!checkForPotentialDuplicate(tempWishListItem.getBuildingType(), 1, nextBuildQueueCheckDTO.getStateId(),gameState, queueElementList)){
+                        queueElementList.add(new QueueElement(BuildingType.INFRASTRUCTURE, 1, nextBuildQueueCheckDTO.getStateId(),gameState));
+                    }
+                    gameState.updateGameState();
+                    break;
+                }
+                if(!checkForPotentialDuplicate(tempWishListItem.getBuildingType(), 1, nextBuildQueueCheckDTO.getStateId(),gameState, queueElementList)){
+                    queueElementList.add(new QueueElement(tempWishListItem.getBuildingType(), 1, nextBuildQueueCheckDTO.getStateId(),gameState));
+                }
+                decreaseBacklogItemLevel(buildingBacklogList);
+                gameState.updateGameState();
             }
             if(queueElementList.size()<filledBuildingProgressSlots+1){
                 System.out.println("Civilian factories first unused on day: " + days + "");
@@ -219,7 +222,7 @@ public class Calculator implements CommandLineRunner {
              gameState.stability = 0.94f;
 
              gameState.getIntegerStateMap().put(69, new State("Sudetenland", 69, 8, 4, 1, 0, 2, 0));
-             gameState.getIntegerStateMap().put(152, new State("Eastern Sudetenland", 74, 6, 2, 1, 0, 0, 0));
+             gameState.getIntegerStateMap().put(74, new State("Eastern Sudetenland", 74, 6, 2, 1, 0, 0, 0));
 
              printTimeLog("remove Schacht Ideas",days);
              gameState.getCivilianFactory().addConstructionSpeedModifier(-0.1f);
@@ -228,12 +231,16 @@ public class Calculator implements CommandLineRunner {
              break;
              case 630:
              printTimeLog("Reichsautobahn",days);
-             gameState.getIntegerStateMap().get(64).setInfrastructureLevel(10);
-             gameState.getIntegerStateMap().get(59).setInfrastructureLevel(10);
-             gameState.getIntegerStateMap().get(60).setInfrastructureLevel(10);
-             gameState.getIntegerStateMap().get(54).setInfrastructureLevel(10);
+             //this doesnt include the case that the ai was building infra at the time which gets cancelled
+             gameState.getIntegerStateMap().get(64).addInfrastructureLevel(10-gameState.getIntegerStateMap().get(64).getInfrastructureLevel()-gameState.getIntegerStateMap().get(64).getPendingInfrastructue());
+             gameState.getIntegerStateMap().get(59).addInfrastructureLevel(10-gameState.getIntegerStateMap().get(59).getInfrastructureLevel()-gameState.getIntegerStateMap().get(59).getPendingInfrastructue());
+             gameState.getIntegerStateMap().get(60).addInfrastructureLevel(10-gameState.getIntegerStateMap().get(60).getInfrastructureLevel()-gameState.getIntegerStateMap().get(60).getPendingInfrastructue());
+             gameState.getIntegerStateMap().get(54).addInfrastructureLevel(10-gameState.getIntegerStateMap().get(54).getInfrastructureLevel()-gameState.getIntegerStateMap().get(54).getPendingInfrastructue());
              gameState.updateGameState();
              break;
+                 case 700:
+                     System.out.println("debug");
+                     break;
              case 770:
              printTimeLog("partition czechoslovakia with hungary",days);
              gameState.getIntegerStateMap().put(9, new State("Bohemia", 9, 7, 8, 6, 0, 1, 0));
@@ -260,7 +267,40 @@ public class Calculator implements CommandLineRunner {
     }
 
     public static void printTimeLog(String message, int days) {
-        System.out.println("Day: " + days + " " + message);
+        //System.out.println("Day: " + days + " " + message);
     }
 
+    public static void decreaseBacklogItemLevel(List<WishListItem> wishListItemList) {
+        wishListItemList.get(0).setAmount(wishListItemList.get(0).getAmount()-1);
+        if(wishListItemList.get(0).getAmount() <= 0){
+            wishListItemList.remove(0);
+        }
+    }
+
+    public static boolean checkForPotentialDuplicate(BuildingType buildingType, int level, int stateId, GameState gameState, List<QueueElement> queueElementList) {
+        Optional<QueueElement> optionalQueueElement = queueElementList.stream().filter(queueElement -> queueElement.getBuildingType() == buildingType && queueElement.getStateId() == stateId).findFirst();
+        if(optionalQueueElement.isEmpty()){
+            return false;
+        }
+        switch(buildingType) {
+            case CIVILIAN_FACTORY:
+                gameState.integerStateMap.get(stateId).addPendingSlot();
+                break;
+            case MILITARY_FACTORY:
+                gameState.integerStateMap.get(stateId).addPendingSlot();
+                break;
+            case INFRASTRUCTURE:
+                gameState.integerStateMap.get(stateId).addPendingInfrastructureLevel();
+                break;
+            case CONVERT_MIL_TO_CIV:
+                // todo
+                break;
+            case CONVERT_CIV_TO_MIL:
+                // todo
+                break;
+        }
+        optionalQueueElement.get().addLevel(level);
+        System.out.println("Added "+level+" level of "+buildingType.toString()+" in "+gameState.integerStateMap.get(stateId).getName() );
+        return true;
+    }
 }

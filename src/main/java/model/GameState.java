@@ -87,7 +87,7 @@ public class GameState {
 
     public NextBuildQueueCheckDTO findStateForNextQueueAndCheckIfInfraIsBetter(GameState gameState) {
         //first check if there is a state with open slots
-        Optional<State> stateOptional = integerStateMap.values().stream().filter(stateEntry -> stateEntry.getOpenInfrastructureLevel() == 0).findFirst();
+        Optional<State> stateOptional = integerStateMap.values().stream().filter(stateEntry -> stateEntry.getOpenInfrastructureLevel() == 0 && stateEntry.getEmptySlots() > 0).findFirst();
         if (stateOptional.isPresent()) {
             return new NextBuildQueueCheckDTO(true, false, stateOptional.get().getId());
         }
@@ -96,23 +96,24 @@ public class GameState {
         AtomicInteger highestValue = new AtomicInteger();
         highestValue.set(-1);
         integerStateMap.values().stream().forEach(state -> {
-            if(calculateConstructionSavingsByBuildingInfrastructure(state)> highestValue.get()){
+            if(calculateConstructionSavingsByBuildingInfrastructure(state)> highestValue.get() && state.getEmptySlots() > 0){
                 stateWithHighestInvestValueId.set(state.getId());
                 highestValue.set(calculateConstructionSavingsByBuildingInfrastructure(state));
             }
-            System.out.println(calculateConstructionSavingsByBuildingInfrastructure(state)+ " in "+state.getName());
+            //System.out.println(calculateConstructionSavingsByBuildingInfrastructure(state)+ " in "+state.getName());
         });
         if(highestValue.get() > 0){
             return new NextBuildQueueCheckDTO(false, true, stateWithHighestInvestValueId.get());
         }
 
-        for(int i = 10; i >0; i--){
+        for(int i = 10; i >0; i--) {
             int finalI = i;
-            Optional<State> optionalState = integerStateMap.values().stream().filter(state -> state.getInfrastructureLevel() == finalI).findFirst();
-            if(optionalState.isPresent()){
+            Optional<State> optionalState = integerStateMap.values().stream().filter(state -> state.getInfrastructureLevel() == finalI && state.getEmptySlots() > 0).findFirst();
+            if (optionalState.isPresent()) {
                 return new NextBuildQueueCheckDTO(false, false, optionalState.get().getId());
             }
         }
+        //implement no slots available this time
         return null;
     }
 

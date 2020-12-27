@@ -43,6 +43,10 @@ public class State {
         this.infrastructureLevel++;
     }
 
+    public void addInfrastructureLevel(int value) {
+        this.infrastructureLevel += value;
+    }
+
     public void addCivilianFactory() {
         this.civAmount++;
     }

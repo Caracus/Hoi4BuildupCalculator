@@ -1,5 +1,8 @@
 package model;
 
+import lombok.Data;
+
+@Data
 public class QueueElement {
     private float goalPoints;
     private float progress;
@@ -60,6 +63,7 @@ public class QueueElement {
                     gameState.integerStateMap.get(stateId).removeCivilianFactory();
                     break;
             }
+            System.out.println("Finished a level of "+buildingType+ " in "+gameState.integerStateMap.get(stateId).getName());
             gameState.updateGameState();
             if(this.level <= 0){
                 return true;
@@ -96,7 +100,7 @@ public class QueueElement {
                 break;
         }
 
-        System.out.println("Build level "+level+" of "+buildingType.toString()+" in "+gameState.integerStateMap.get(stateId).getName() );
+        System.out.println("Start "+level+" level of "+buildingType.toString()+" in "+gameState.integerStateMap.get(stateId).getName() );
 
     }
 
@@ -105,5 +109,9 @@ public class QueueElement {
     }
     public void calculateProgressInfrastructure(float specificModifier, int factories){
         this.progress += factories*(5.0f*(1+gameState.getGeneralConstructionBonusFinal()+specificModifier));
+    }
+
+    public void addLevel(int value){
+        this.level += value;
     }
 }
